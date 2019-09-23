@@ -8,13 +8,9 @@ import (
 	"fmt"
 	"net/http"
 	"satellity/internal/configs"
-	"satellity/internal/durable"
 	"satellity/internal/external"
 	"satellity/internal/session"
 	"strings"
-	"time"
-
-	"github.com/gofrs/uuid"
 )
 
 // GithubUser is the response body of github oauth.
@@ -40,40 +36,10 @@ func CreateGithubUser(mctx *Context, code, sessionSecret string) (*User, error) 
 	err = mctx.database.RunInTransaction(ctx, func(tx *sql.Tx) error {
 		var err error
 		user, err = findUserByGithubID(ctx, tx, data.NodeID)
-		return err
-	})
-	if err != nil {
-		return nil, session.TransactionError(ctx, err)
-	}
-	if user == nil {
-		t := time.Now()
-		user = &User{
-			UserID:    uuid.Must(uuid.NewV4()).String(),
-			Username:  fmt.Sprintf("%s_GH", data.Login),
-			Nickname:  data.Name,
-			GithubID:  sql.NullString{String: data.NodeID, Valid: true},
-			CreatedAt: t,
-			UpdatedAt: t,
-			isNew:     true,
-		}
-		if data.Email != "" {
-			user.Email = sql.NullString{String: data.Email, Valid: true}
-		}
-	}
-
-	err = mctx.database.RunInTransaction(ctx, func(tx *sql.Tx) error {
-		if user.isNew {
-			cols, params := durable.PrepareColumnsWithValues(userColumns)
-			_, err := tx.ExecContext(ctx, fmt.Sprintf("INSERT INTO users(%s) VALUES (%s)", cols, params), user.values()...)
-			if err != nil {
-				return err
-			}
-		}
-		s, err := user.addSession(ctx, tx, sessionSecret)
 		if err != nil {
-			return err
+			return nil
 		}
-		user.SessionID = s.SessionID
+		user, err = createUser(ctx, tx, data.Email, fmt.Sprintf("%s_GH", data.Login), data.Name, "", sessionSecret, data.NodeID, user)
 		return err
 	})
 	if err != nil {
@@ -135,7 +101,7 @@ func fetchOauthUser(ctx context.Context, accessToken string) (*GithubUser, error
 	if err := json.NewDecoder(resp.Body).Decode(&user); err != nil {
 		return nil, err
 	}
-	email, err := featchUserEmail(ctx, accessToken)
+	email, err := fetchUserEmail(ctx, accessToken)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +109,7 @@ func fetchOauthUser(ctx context.Context, accessToken string) (*GithubUser, error
 	return &user, nil
 }
 
-func featchUserEmail(ctx context.Context, accessToken string) (string, error) {
+func fetchUserEmail(ctx context.Context, accessToken string) (string, error) {
 	client := external.HTTPClient()
 	req, err := http.NewRequest("GET", "https://api.github.com/user/public_emails", nil)
 	if err != nil {

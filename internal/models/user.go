@@ -105,37 +105,16 @@ func CreateUser(mctx *Context, email, username, nickname, biography, password st
 		return nil, err
 	}
 
-	t := time.Now()
-	user := &User{
-		UserID:            uuid.Must(uuid.NewV4()).String(),
-		Email:             sql.NullString{String: email, Valid: true},
-		Username:          username,
-		Nickname:          nickname,
-		Biography:         biography,
-		EncryptedPassword: sql.NullString{String: password, Valid: true},
-		CreatedAt:         t,
-		UpdatedAt:         t,
-	}
-
+	var user *User
 	err = mctx.database.RunInTransaction(ctx, func(tx *sql.Tx) error {
-		cols, params := durable.PrepareColumnsWithValues(userColumns)
-		_, err := tx.ExecContext(ctx, fmt.Sprintf("INSERT INTO users(%s) VALUES (%s)", cols, params), user.values()...)
-		if err != nil {
-			return err
-		}
-		s, err := user.addSession(ctx, tx, sessionSecret)
-		if err != nil {
-			return err
-		}
-		user.SessionID = s.SessionID
-		return nil
+		var err error
+		user, err = createUser(ctx, tx, email, username, username, password, sessionSecret, "", nil)
+		return err
 	})
 	if err != nil {
-		if _, ok := err.(session.Error); ok {
-			return nil, err
-		}
 		return nil, session.TransactionError(ctx, err)
 	}
+	go upsertStatistic(mctx, "users")
 	return user, nil
 }
 

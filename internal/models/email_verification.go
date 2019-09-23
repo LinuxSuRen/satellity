@@ -113,27 +113,8 @@ func VerifyEmailVerification(mctx *Context, verificationID, code, username, pass
 		if err != nil {
 			return err
 		}
-		t := time.Now()
-		user = &User{
-			UserID:            uuid.Must(uuid.NewV4()).String(),
-			Email:             sql.NullString{String: ev.Email, Valid: true},
-			Username:          username,
-			Nickname:          username,
-			EncryptedPassword: sql.NullString{String: password, Valid: true},
-			CreatedAt:         t,
-			UpdatedAt:         t,
-		}
-		columns, params := durable.PrepareColumnsWithValues(userColumns)
-		_, err = tx.ExecContext(ctx, fmt.Sprintf("INSERT INTO users(%s) VALUES (%s)", columns, params), user.values()...)
-		if err != nil {
-			return err
-		}
-		s, err := user.addSession(ctx, tx, sessionSecret)
-		if err != nil {
-			return err
-		}
-		user.SessionID = s.SessionID
-		return nil
+		user, err = createUser(ctx, tx, ev.Email, username, username, password, sessionSecret, "", nil)
+		return err
 	})
 	if err != nil {
 		if _, ok := err.(session.Error); ok {
@@ -143,6 +124,40 @@ func VerifyEmailVerification(mctx *Context, verificationID, code, username, pass
 	} else if user == nil {
 		return nil, session.VerificationCodeInvalidError(ctx)
 	}
+	return user, nil
+}
+
+func createUser(ctx context.Context, tx *sql.Tx, email, username, nickname, password, sessionSecret, githubID string, user *User) (*User, error) {
+	if user == nil {
+		t := time.Now()
+		user = &User{
+			UserID:    uuid.Must(uuid.NewV4()).String(),
+			Username:  username,
+			Nickname:  nickname,
+			CreatedAt: t,
+			UpdatedAt: t,
+		}
+		if email != "" {
+			user.Email = sql.NullString{String: email, Valid: true}
+		}
+		if password != "" {
+			user.EncryptedPassword = sql.NullString{String: password, Valid: true}
+		}
+		if githubID != "" {
+			user.GithubID = sql.NullString{String: githubID, Valid: true}
+		}
+
+		columns, params := durable.PrepareColumnsWithValues(userColumns)
+		_, err := tx.ExecContext(ctx, fmt.Sprintf("INSERT INTO users(%s) VALUES (%s)", columns, params), user.values()...)
+		if err != nil {
+			return nil, err
+		}
+	}
+	s, err := user.addSession(ctx, tx, sessionSecret)
+	if err != nil {
+		return nil, err
+	}
+	user.SessionID = s.SessionID
 	return user, nil
 }
 
