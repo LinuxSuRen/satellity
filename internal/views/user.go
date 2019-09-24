@@ -1,11 +1,8 @@
 package views
 
 import (
-	"crypto/md5"
-	"fmt"
 	"net/http"
 	"satellity/internal/models"
-	"strings"
 	"time"
 )
 
@@ -36,7 +33,7 @@ func buildUser(user *models.User) UserView {
 		UserID:      user.UserID,
 		Nickname:    user.Name(),
 		Biography:   user.Biography,
-		AvatarURL:   fmt.Sprintf("https://www.gravatar.com/avatar/%x?s=180&d=wavatar", md5.Sum([]byte(strings.ToLower(user.Email.String)))),
+		AvatarURL:   user.GetAvatar(),
 		GroupsCount: user.GroupsCount,
 		CreatedAt:   user.CreatedAt,
 		UpdatedAt:   user.UpdatedAt,

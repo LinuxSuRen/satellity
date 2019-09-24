@@ -1,14 +1,15 @@
 package views
 
 import (
-	"satellity/internal/models"
 	"net/http"
+	"satellity/internal/models"
 	"time"
 )
 
 // CommentView is the response body of comment
 type CommentView struct {
-	CommentID string    `json:"comment_id,pk"`
+	Type      string    `json:"type"`
+	CommentID string    `json:"comment_id"`
 	Body      string    `json:"body"`
 	TopicID   string    `json:"topic_id"`
 	UserID    string    `json:"user_id"`
@@ -20,6 +21,7 @@ type CommentView struct {
 
 func buildComment(comment *models.Comment) CommentView {
 	view := CommentView{
+		Type:      "comment",
 		CommentID: comment.CommentID,
 		Body:      comment.Body,
 		TopicID:   comment.TopicID,

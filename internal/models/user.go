@@ -3,6 +3,7 @@ package models
 import (
 	"context"
 	"crypto/ecdsa"
+	"crypto/md5"
 	"crypto/x509"
 	"database/sql"
 	"encoding/hex"
@@ -293,6 +294,11 @@ func findUserByIdentity(ctx context.Context, tx *sql.Tx, identity string) (*User
 		return nil, err
 	}
 	return user, nil
+}
+
+// GetAvatar return the avatar of the user
+func (user *User) GetAvatar() string {
+	return fmt.Sprintf("https://www.gravatar.com/avatar/%x?s=180&d=wavatar", md5.Sum([]byte(strings.ToLower(user.Email.String))))
 }
 
 // Role of an user, contains admin and member for now.

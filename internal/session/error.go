@@ -30,7 +30,7 @@ func (sessionError Error) Error() string {
 // AuthorizationError return 401 for unauthorized request
 func AuthorizationError(ctx context.Context) Error {
 	description := "Unauthorized, maybe invalid token."
-	return createError(ctx, http.StatusAccepted, 401, description, nil)
+	return createError(ctx, http.StatusAccepted, http.StatusUnauthorized, description, nil)
 }
 
 // ForbiddenError return 401 for unauthorized request
