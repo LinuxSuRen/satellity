@@ -65,6 +65,10 @@ It'll be a patreon-like forum.
 2. run `npm install` to prepare front-end.
 3. `npm run dev` and open `http://localhost:1234`
 
+
+docker run -p 9876:4000 -v /root/test-1:/internal/configs surenpi/forum:latest
+docker run -e GITHUB_CLIENT_ID=e3dd182d77c5ffac74c2 -e API_HOST="http://129.28.195.244:9876/"  -e SITE_NAME=suren -p 34566:1234 surenpi/forum-web
+
 ## License
 
 ![https://opensource.org/licenses/MIT](https://img.shields.io/github/license/mashape/apistatus.svg)
